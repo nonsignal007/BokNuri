@@ -7,7 +7,7 @@ from torch import Tensor
 import torchaudio
 import numpy as np
 import librosa
-from jaso import jaso
+from App.STT.jaso import jaso
 import warnings
 warnings.filterwarnings('ignore')
 
