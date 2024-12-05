@@ -1,0 +1,7 @@
+
+## pip install 
+
+pip install streamlit
+pip install tiktoken
+pip install langchain
+pip install loguru

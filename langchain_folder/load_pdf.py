@@ -1,5 +1,5 @@
 from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
 
 def load_pdf(path):    
     # PDF 파일 로드. 파일의 경로 입력
@@ -16,7 +16,18 @@ def load_pdf(path):
     return docs
 
 def doc_split(docs, spliter, chunk_size=500, chunk_overlap=20):
-    # 단계 2: 문서 분할
+    # CharacterTextSpliter를 이용하여 문서를 분할
+    if splitter == 'CharacterTextSpliter':
+        splitter = CharacterTextSplitter(
+                                    separator='\n\n',
+                                    chunk_size=chunk_size,
+                                    chunk_overlap=chunk_overlap,
+                                    length_function = len,
+                                    is_separator_regex=False,
+                                    )
+    elif splitter == 'RecursiveCharacterTextSplitter':
+        
+
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
     splits = text_splitter.split_documents(docs)
 
