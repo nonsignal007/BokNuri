@@ -13,8 +13,29 @@ from langchain_core.output_parsers import StrOutputParser
 # URL 설정
 from langchain.document_loaders import PyPDFLoader
 
+# cache 설정
+import os
+
+# 모든 가중치 파일의 캐시 디렉토리 설정
+cache_dir = './weights'
+os.makedirs(cache_dir, exist_ok=True)
+
+# HuggingFace 관련 모든 캐시 경로 설정
+os.environ['TRANSFORMERS_CACHE'] = cache_dir
+os.environ['HF_HOME'] = cache_dir
+os.environ['HF_DATASETS_CACHE'] = os.path.join(cache_dir, 'datasets')
+os.environ['HUGGINGFACE_HUB_CACHE'] = cache_dir
+os.environ['TORCH_HOME'] = os.path.join(cache_dir, 'torch')
+
+# 설정 확인
+print("TRANSFORMERS_CACHE:", os.getenv('TRANSFORMERS_CACHE'))
+print("HF_HOME:", os.getenv('HF_HOME'))
+print("HF_DATASETS_CACHE:", os.getenv('HF_DATASETS_CACHE'))
+print("HUGGINGFACE_HUB_CACHE:", os.getenv('HUGGINGFACE_HUB_CACHE'))
+print("TORCH_HOME:", os.getenv('TORCH_HOME'))
+
 # PDF 파일 로드. 파일의 경로 입력
-loader = PyPDFLoader("guide_book.pdf")
+loader = PyPDFLoader("/workspace/LangEyE/langchain_folder/pdf/장애인ㆍ노인ㆍ임산부 등의 편의증진 보장에 관한 법률 시행규칙.pdf")
 
 # 페이지 별 문서 로드
 docs = loader.load()
@@ -32,19 +53,24 @@ else:
     device = 'cpu'
 
 model_name = "upskyy/bge-m3-korean"
-model_kwargs = {'device': device}
+model_kwargs = {'device': device }
 encode_kwargs = {'normalize_embeddings': True}
 
+# 임베딩 모델
 embeddings = HuggingFaceEmbeddings(
     model_name=model_name,
     model_kwargs=model_kwargs,
-    encode_kwargs=encode_kwargs
+    encode_kwargs=encode_kwargs,
+    cache_folder=cache_dir  # 캐시 디렉토리 지정
 )
 
 vectorstore = FAISS.from_documents(
     documents=splits,
     embedding=embeddings
 )
+
+
+
 
 # 단계 4: 검색 설정
 retriever = vectorstore.as_retriever(
@@ -69,11 +95,17 @@ prompt = PromptTemplate.from_template("""
 #     torch_dtype=torch.float16
 # )
 
-tokenizer = AutoTokenizer.from_pretrained("davidkim205/Ko-Llama-3-8B-Instruct")
+# tokenizer와 모델
+tokenizer = AutoTokenizer.from_pretrained(
+    "davidkim205/Ko-Llama-3-8B-Instruct",
+    cache_dir=cache_dir  # 캐시 디렉토리 지정
+)
+
 model = AutoModelForCausalLM.from_pretrained(
     "davidkim205/Ko-Llama-3-8B-Instruct",
-    device_map="auto",  # auto로 설정하여 accelerate가 알아서 처리하도록 함
-    torch_dtype=torch.float16
+    device_map="auto",
+    torch_dtype=torch.float16,
+    cache_dir=cache_dir  # 캐시 디렉토리 지정
 )
 
 # 파이프라인 설정 - device 인자 제거

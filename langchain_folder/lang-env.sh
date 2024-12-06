@@ -1,3 +1,6 @@
+
+mkdir weights
+
 pip install transformers
 pip install langchain
 pip install langchain-community
