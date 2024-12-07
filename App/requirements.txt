@@ -1,0 +1,19 @@
+
+## streamlit
+streamlit
+tiktoken
+langchain
+loguru
+
+transformers
+
+## STT
+SpeechRecognition
+librosa
+pyaudio
+
+## langchian
+langchain
+tiktoken
+langchain_community
+pypdf

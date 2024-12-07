@@ -1,5 +1,5 @@
 
-mkdir weights
+mkdir src/weights
 
 pip install transformers
 pip install langchain
