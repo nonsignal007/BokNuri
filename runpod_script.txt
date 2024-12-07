@@ -1,0 +1,9 @@
+## git setting
+git config --global user.name "nonsignal007"
+git config --global user.email "nonsignal007@gmail.com"
+
+cp runpod_set/config ~/.ssh/config
+
+## dependency
+sh lang-env.sh
+

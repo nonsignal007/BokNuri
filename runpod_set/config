@@ -1,0 +1,2 @@
+Host github.com
+	IdentityFile ~/.ssh/authorized_keys
