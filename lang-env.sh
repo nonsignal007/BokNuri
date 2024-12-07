@@ -9,3 +9,6 @@ pip install langchain_huggingface
 pip install pypdf
 pip install faiss-gpu
 pip install 'accelerate>=0.26.0'
+pip install streamlit
+pip install tiktoken
+pip install loguru
