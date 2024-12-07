@@ -18,4 +18,3 @@ pip install st_clickable_images
 pip install audio_recorder_streamlit
 pip install pyaudio
 pip install librosa
-#뭘까
