@@ -1,0 +1,30 @@
+## transformers 저장소 설정
+weights_dir : test_App/src/weights
+
+app_path : test_App/
+
+
+## system sound
+system_sound : {
+    "sampling_rate" : 44100, # 44.1kHz
+    "service_info" : "info.wav", # "서비스를 이용해 주셔서 감사합니다."
+    "recorded_file_path" : "recorded_audio.wav", # 사용자에게 받는 음원
+    "processed_file_path" : "processed_audio.wav", # LLM의 결과를 TTS 형태로 받은 음원
+    "arrival_sound_path" : "arrive.wav", # "응답이 준비되었습니다."
+    "wait_sound_path" : "wait.wav", # "잠시만 기다려 주세요."
+    "replay_path" : "replay.wav", # '다시 재생을 원하시는 경우 화면 아래 부분을 터치해주세요'
+    "none_path" : "none.wav" # '도착한 응답이 없습니다.' 
+}
+
+## state_manage
+session_state : {
+    "click_count" : 0,
+    "is_recording" : False,
+    "audio_data" : [],
+    "waiting" : False,
+    "has_played_info" : False,
+    "processed_audio_played" : False,
+    "show_replay_button" : False,
+    "stream" : None,
+    "recording_thread" : None,
+}

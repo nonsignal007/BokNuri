@@ -6,7 +6,7 @@ def set_weights_dir(config: str):
     절대 경로 넣기
     """
     
-    weights_dir = config['weights_dir']
+    weights_dir = config.get('weights_dir')
     os.makedirs(weights_dir, exist_ok=True)
 
     # HuggingFace 관련 모든 캐시 경로 설정
