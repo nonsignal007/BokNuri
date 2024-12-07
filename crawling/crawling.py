@@ -9,7 +9,7 @@ from selenium.webdriver.support import expected_conditions as EC
 import requests
 
 
-def bokjiro_pdf(page_url, js_function, iframe_selector, pdf_xpath, save_path):
+def bokjiro_pdf():
     page_url = "https://www.bokjiro.go.kr/ssis-tbu/twatxa/wlfarePr/selectWlfareSubMain.do"
     js_function = 'fnSideMenu("MTWAT00072")'  # JavaScript 함수 호출
     iframe_selector = 'iframe[title="안내책자"]'
@@ -48,14 +48,3 @@ def bokjiro_pdf(page_url, js_function, iframe_selector, pdf_xpath, save_path):
     driver.switch_to.default_content()
 
     driver.quit()
-
-
-# 실행 예제
-page_url = "https://www.bokjiro.go.kr/ssis-tbu/twatxa/wlfarePr/selectWlfareSubMain.do"
-js_function = 'fnSideMenu("MTWAT00072")'  # JavaScript 함수 호출
-iframe_selector = 'iframe[title="안내책자"]'
-pdf_xpath = '//a[contains(@title, "장애인")]'
-
-save_path = "2024_장애인_안내책자.pdf"
-
-bokjiro_pdf(page_url, js_function, iframe_selector, pdf_xpath, save_path)
