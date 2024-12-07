@@ -2,17 +2,8 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# Streamlit 포트 설정
-import socket
-from streamlit.web.server import Server
-from streamlit.web.server.server import PORT_NUMBER
-
-# 포트 8501로 설정
-if __name__ == '__main__':
-    PORT_NUMBER = 8501
-
 # 페이지 제목 설정
-st.title('내 첫 번째 Streamlit 앱')
+st.title('Streamlit 앱 (포트 4000)')
 
 # 텍스트 입력 위젯
 user_input = st.text_input('이름을 입력하세요', '게스트')
@@ -36,6 +27,3 @@ option = st.sidebar.selectbox(
     ['옵션 1', '옵션 2', '옵션 3']
 )
 st.sidebar.write('선택한 옵션:', option)
-
-# 현재 실행 중인 포트 표시
-st.sidebar.write(f'현재 포트: {PORT_NUMBER}')
