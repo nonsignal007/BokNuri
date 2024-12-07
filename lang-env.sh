@@ -12,3 +12,6 @@ pip install 'accelerate>=0.26.0'
 pip install streamlit
 pip install tiktoken
 pip install loguru
+pip install sounddevice
+pip install simpleaudio
+pip install st_clickable_images
