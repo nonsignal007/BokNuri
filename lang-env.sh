@@ -14,5 +14,8 @@ pip install tiktoken
 pip install loguru
 pip install sounddevice
 pip install simpleaudio
-pip install st_clickable_imagespip install audio_recorder_streamlit
+pip install st_clickable_images
+pip install audio_recorder_streamlit
 pip install pyaudio
+pip install librosa
+#뭘까
