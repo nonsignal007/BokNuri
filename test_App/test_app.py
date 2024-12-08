@@ -18,7 +18,7 @@ class Config:
 
 class VoiceBot:
     def __init__(self):
-        self.config = Config('test_App/config.yaml')
+        self.config = Config('config.yaml')
         
         # session_state 초기화
         if 'is_recording' not in st.session_state:

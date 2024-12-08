@@ -14,8 +14,10 @@ pip install tiktoken
 pip install loguru
 pip install sounddevice
 pip install simpleaudio
-pip install st_clickable_imagespip install audio_recorder_streamlit
+pip install st_clickable_images
+pip install audio_recorder_streamlit
 pip install pyaudio
+pip install librosa
 
 git clone https://github.com/myshell-ai/MeloTTS.git test_App/models/TTS
 cd test_App/models/TTS
