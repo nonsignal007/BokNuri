@@ -35,7 +35,6 @@ class STTModel:
             logits = self.model(input_values).logits
         predicted_ids = torch.argmax(logits, dim=-1)
         pred = self.processor.batch_decode(predicted_ids)
-        
         return jaso().to_sentence(''.join(pred))
 
 

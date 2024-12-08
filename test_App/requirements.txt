@@ -1,0 +1,7 @@
+gradio
+SpeechRecognition
+soundfile
+gtts
+sounddevice
+librosa
+transformers
