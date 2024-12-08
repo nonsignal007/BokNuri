@@ -31,6 +31,69 @@ class VoiceBot:
             page_icon="🎤",
             layout="centered"
         )
+
+        # CSS 스타일 추가
+        st.markdown("""
+            <style>
+            /* Streamlit 기본 패딩 제거 */
+            .block-container {
+                padding: 0;
+            }
+            
+            /* 오디오 레코더 컨테이너 중앙 정렬 */
+            .element-container {
+                position: fixed;
+                top: 50%;
+                left: 72%;
+                transform: translate(-50%, -50%);
+                margin: 0 !important;
+            }
+            
+            /* 오디오 녹음 버튼 스타일링 */
+            .audio-recorder {
+                width: 200px !important;
+                height: 200px !important;
+                border-radius: 50% !important;
+                background-color: #FF4B4B !important;
+                border: none !important;
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
+                padding: 0 !important;
+                cursor: pointer !important;
+                margin: 0 auto !important;
+            }
+
+            .audio-recorder:hover {
+                background-color: #FF0000 !important;
+            }
+
+            .audio-recorder:active {
+                background-color: #CC0000 !important;
+            }
+
+            /* 마이크 아이콘 스타일 */
+            .audio-recorder svg {
+                width: 100px !important;
+                height: 100px !important;
+                fill: white !important;
+            }
+
+            /* 오디오 플레이어 스타일 */
+            .stAudio {
+                position: fixed;
+                left: 50%;
+                transform: translateX(-50%);
+                bottom: 20px;
+                width: auto;
+            }
+            
+            .stAudio > div {
+                display: flex;
+                justify-content: center;
+            }
+            </style>
+        """, unsafe_allow_html=True)
     
     def load_stt_model(self, config):
         model = STTModel(config)
@@ -38,18 +101,16 @@ class VoiceBot:
         
     def speech_to_text(self, audio_bytes):
         """음성을 텍스트로 변환"""
-        # TODO: STT 모델을 사용하여 음성을 텍스트로 변환
-        # 예: text = self.stt_model.transcribe(audio_bytes)
-        # return text
         model = st.session_state.stt_model
         return model.transcribe(audio_bytes)
         
-    def recording(self, col2):
+    def recording(self):
         # 오디오 녹음 처리
         audio_bytes = audio_recorder(
             text="",
             recording_color="#e87474",
-            neutral_color="#6aa36f"
+            neutral_color="#6aa36f",
+            icon_size="6x"  # 마이크 아이콘 크기 증가
         )
         
         if audio_bytes:
@@ -64,11 +125,7 @@ class VoiceBot:
                 print(f"Error processing audio: {str(e)}")
                 
     def run(self):
-        col1, col2, col3 = st.columns([1,2,1])
-
-        with col2:
-            st.title("보이스 봇")
-            self.recording(col2)
+        self.recording()
 
 if __name__ == "__main__":
     print(os.getcwd())
