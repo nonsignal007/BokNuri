@@ -16,3 +16,9 @@ pip install sounddevice
 pip install simpleaudio
 pip install st_clickable_imagespip install audio_recorder_streamlit
 pip install pyaudio
+
+git clone https://github.com/myshell-ai/MeloTTS.git test_App/models/TTS
+cd test_App/models/TTS
+pip install -e .
+python -m unidic download
+cd ../../..
