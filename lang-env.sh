@@ -1,5 +1,5 @@
 
-mkdir src/weights
+mkdir test_App/src/weights
 
 pip install transformers
 pip install langchain
@@ -19,7 +19,6 @@ pip install audio_recorder_streamlit
 pip install pyaudio
 pip install librosa
 
-git clone https://github.com/myshell-ai/MeloTTS.git test_App/models/TTS
 cd test_App/models/TTS
 pip install -e .
 python -m unidic download
