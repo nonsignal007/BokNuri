@@ -1,0 +1,15 @@
+gradio
+SpeechRecognition
+soundfile
+gtts
+sounddevice
+librosa
+transformers
+
+langchain
+langchain-community
+langchain_huggingface
+langchain_experimental
+pypdf
+faiss-gpu
+accelerate>=0.26.0
