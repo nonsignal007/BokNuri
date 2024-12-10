@@ -3,8 +3,6 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import PromptTemplate
 from langchain_huggingface import HuggingFacePipeline
 from langchain_core.runnables import RunnablePassthrough
@@ -69,6 +67,7 @@ def load_rag_model():
     
     답변:"""
     
+
     prompt = PromptTemplate.from_template(template)
 
     # 모델 로드
