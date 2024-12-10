@@ -22,9 +22,9 @@ os.environ['HUGGINGFACE_HUB_CACHE'] = cache_dir
 os.environ['TORCH_HOME'] = os.path.join(cache_dir, 'torch')
 
 def load_rag_model():
-    pdf_path = "/workspace/LangEyE/crawling/2024_장애인_안내책자.pdf"
+    pdf_path = "/workspace/LangEyE/crawling/장애인복지법.pdf"
     # PDF 파일 로드
-    docs = LegalText(pdf_path).documnets
+    docs = LegalText(pdf_path).documents
 
     # 임베딩 모델 설정
     if torch.backends.mps.is_available():
@@ -112,3 +112,40 @@ def load_rag_model():
         return rag_chain
 
     return create_chain_with_user_info
+
+
+class ChatbotState:
+    def __init__(self):
+        """챗봇 상태 초기화"""
+        self.create_chain = load_rag_model()
+        self.chain = None
+        self.settings = None
+        self.initialize_chain()
+    
+    def initialize_chain(self):
+        """기본 체인 초기화"""
+        try:
+            default_info = "설정되지 않은 사용자"
+            self.chain = self.create_chain(default_info)
+        except Exception as e:
+            print(f"Chain initialization error: {str(e)}")
+            self.chain = None
+
+    def update_settings(self, settings):
+        """사용자 설정 업데이트 및 체인 재생성"""
+        try:
+            self.settings = settings
+            user_info = format_user_info(settings)
+            self.chain = self.create_chain(user_info)
+            return True
+        except Exception as e:
+            print(f"Settings update error: {str(e)}")
+            return False
+
+chatbot_state = ChatbotState()
+
+text = "장애정도 재심사가 뭐야"
+
+response = chatbot_state.chain.invoke(text)
+
+print(response)
