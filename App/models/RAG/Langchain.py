@@ -51,23 +51,21 @@ def load_rag_model():
         documents=splits,
         embedding=embeddings
     )
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 2})
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
 
     # 프롬프트 템플릿 (사용자 정보 포함)
-    template = """
-    당신은 시각장애인을 대상으로 복지 질문-답변(Question-Answering)을 수행하는 친절한 AI 어시스턴트입니다.
-
-    사용자 정보:
-    {user_info}
+    template = """다음은 장애인복지법의 일부 내용입니다:
+    {context}
 
     질문: {question}
 
-    관련 문서:
-    {context}
+    위 법령 내용을 바탕으로 답변해주세요. 
+    - 관련 법조항을 명시해주세요
+    - 법령에 명시된 내용만 답변해주세요
+    - 불확실한 내용은 '법령에서 명확히 명시되어 있지 않습니다'라고 답변해주세요
+    - 답변 마지막에 참고한 법조항 번호를 명시해주세요
 
-    위 정보를 바탕으로 사용자의 상황에 맞는 복지 정보를 [관련 법안 혹은 근거], [대상], [혜택 내용], [신청 방법], [문의처]를 포함하여 안내해주세요.
-    특히 사용자의 장애등급, 소득분위 등을 고려하여 맞춤형 정보를 제공해주세요.
-    """
+    답변:"""
     
     prompt = PromptTemplate.from_template(template)
 
@@ -102,8 +100,7 @@ def load_rag_model():
         rag_chain = (
             {
                 "context": retriever | format_docs,
-                "question": RunnablePassthrough(),
-                "user_info": lambda _: user_info
+                "question": RunnablePassthrough()
             }
             | prompt
             | llm
