@@ -18,8 +18,9 @@ pip install st_clickable_images
 pip install audio_recorder_streamlit
 pip install pyaudio
 pip install librosa
+pip install langchain_experimental
 
-cd test_App/models/TTS
-pip install -e .
-python -m unidic download
-cd ../../..
+# cd test_App/models/TTS
+# pip install -e .
+# python -m unidic download
+# cd ../../..
