@@ -10,6 +10,7 @@ from langchain_huggingface import HuggingFacePipeline
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
 from langchain_experimental.text_splitter import SemanticChunker
+from pdf_preprocessing import LegalText
 
 # 캐시 디렉토리 설정
 cache_dir = './weights'
@@ -23,8 +24,7 @@ os.environ['TORCH_HOME'] = os.path.join(cache_dir, 'torch')
 def load_rag_model():
     pdf_path = "/workspace/LangEyE/crawling/2024_장애인_안내책자.pdf"
     # PDF 파일 로드
-    loader = PyPDFLoader(pdf_path)
-    docs = loader.load()
+    docs = LegalText(pdf_path).documnets
 
     # 임베딩 모델 설정
     if torch.backends.mps.is_available():
