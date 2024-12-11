@@ -1,0 +1,23 @@
+[
+  {
+    "retriever_name": "Basic",
+    "relevant_docs": 3.0,
+    "response_time": 0.11163663864135742,
+    "precision": 1.0,
+    "recall": 0.047619047619047616
+  },
+  {
+    "retriever_name": "MMR",
+    "relevant_docs": 3.0,
+    "response_time": 0.0432283878326416,
+    "precision": 1.0,
+    "recall": 0.047619047619047616
+  },
+  {
+    "retriever_name": "Contextual",
+    "relevant_docs": 3.0,
+    "response_time": 108.74950742721558,
+    "precision": 1.0,
+    "recall": 0.047619047619047616
+  }
+]

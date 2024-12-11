@@ -21,6 +21,7 @@ pip install librosa
 pip install langchain_experimental
 pip install langchain_chroma
 pip install sentence-transformers
+pip install rank_bm25
 # cd test_App/models/TTS
 # pip install -e .
 # python -m unidic download
