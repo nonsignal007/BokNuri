@@ -45,7 +45,6 @@ class LegalText:
         """주요 조문 추출"""
         pattern = r'(제\d+조(?:의\d+)?\s*\([^)]+\))\s*(.*?)(?=\n\s*\n제\d+조(?:의\d+)?\s*\([^)]+\)|$)'
         match = re.findall(pattern, text, re.DOTALL)
-        # print(match[0])
         return match
 
     def set_doc(self, text):
@@ -74,13 +73,18 @@ class LegalText:
                 paragraph = paragraph_title.pop(0)
 
                 for j in range(len(self.extract_main_articles(chapter_list[i]))):
+                    article = self.extract_main_articles(chapter_list[i])[j][0]
+                    article_number = article[:article.find('(')]
+                    article_subject = article[article.find('(')+1:article.find(')')]
+                    
                     self.documents.append(Document(
                         page_content=self.extract_main_articles(chapter_list[i])[j][1],
                         metadata={
                             "law_title" : self.law_name, ## 법 제목
                             "effective_date" : self.valid_date, ## 시행 일자
                             "paragraph" : paragraph, ## 항 제목
-                            "article_number" : self.extract_main_articles(chapter_list[i])[j][0], ## 조문 번호
+                            "article_number" : article_number, ## 조문 번호
+                            "article_subject" : article_subject, ## 조문 주제
                             "document_type" : "법률",
                             "is_valid" : self.valid,
                             "legal_area" : "장애인복지",
