@@ -69,8 +69,8 @@ class LegalText:
                     metadata={
                         "law_title" : self.law_name, ## 법 제목
                         "effective_date" : self.valid_date, ## 시행 일자
-                        "paragraph_number" : None, ## 장 번호
-                        "paragraph_subject" : None, ## 항 제목
+                        "paragraph_number" : "", ## 장 번호
+                        "paragraph_subject" : "", ## 항 제목
                         "article_number" : article_number, ## 조문 번호
                         "article_subject" : article_subject, ## 조문 주제
                         # "document_type" : "법률",
