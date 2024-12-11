@@ -3,38 +3,38 @@ import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from transformers import pipeline
 
-from langchain_core.pipeline import HuggingFacePipeline
+from langchain.llms import HuggingFacePipeline
 
-def load_model(self, model_name):
+def load_model(model_name, cache_dir):
     """로컬 LLM 모델 로드"""
     if model_name == 'llama':
-        self.tokenizer = AutoTokenizer.from_pretrained(
+        tokenizer = AutoTokenizer.from_pretrained(
             "davidkim205/Ko-Llama-3-8B-Instruct",
-            cache_dir=self.cache_dir
+            cache_dir=cache_dir
         )
         model = AutoModelForCausalLM.from_pretrained(
             "davidkim205/Ko-Llama-3-8B-Instruct",
             device_map="auto",
             torch_dtype=torch.float16,
-            cache_dir=self.cache_dir
+            cache_dir=cache_dir
         )
     elif model_name == 'qwen':
-        self.tokenizer = AutoTokenizer.from_pretrained(
+        tokenizer = AutoTokenizer.from_pretrained(
             "davidkim205/Ko-Qwen-3-8B-Instruct",
-            cache_dir=self.cache_dir
+            cache_dir=cache_dir
         )
         model = AutoModelForCausalLM.from_pretrained(
             "davidkim205/Ko-Qwen-3-8B-Instruct",
             device_map="cuda",
             torch_dtype=torch.float16,
-            cache_dir=self.cache_dir
+            cache_dir=cache_dir
         )
     
     # HuggingFace pipeline 생성
     pipe = pipeline(
         "text-generation",
         model=model,
-        tokenizer=self.tokenizer,
+        tokenizer=tokenizer,
         max_length=2048,
         temperature=0.1,
         top_p=0.95,

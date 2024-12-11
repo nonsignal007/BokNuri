@@ -61,6 +61,5 @@ def create_chroma_db(embedding_model):
         persist_directory=DB_PATH,
         collection_name="my_db"
     )
-    db.persist()
     print(f"Successfully created Chroma DB with {len(all_documents)} total documents")
     return db
