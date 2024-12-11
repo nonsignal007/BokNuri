@@ -1,4 +1,4 @@
 ## transformers 저장소 설정
-weights_dir : test_App/src/weights
+weights_dir : App/src/weights
 
-app_path : test_App/
+app_path : App/
