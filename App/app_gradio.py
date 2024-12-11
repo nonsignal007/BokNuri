@@ -9,7 +9,7 @@ from gtts import gTTS
 import numpy as np
 
 from models.RAG.Langchain import load_rag_model  # Langchain.py에서 모델 가져오기
-
+from models.STT.Korean-Streaming-ASR import 
 
 ########## STT , TTS ###############
 def speech_to_text(audio):

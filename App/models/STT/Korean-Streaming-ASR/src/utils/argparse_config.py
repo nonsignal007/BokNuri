@@ -12,7 +12,7 @@ def setup_arg_parser():
     parser.add_argument('--num_workers', type=int, default=multiprocessing.cpu_count())
     parser.add_argument('--inference', action="store_true",
                             help="Whether to use inference mode. Inference mode takes in audio files, split them into batches, and passes them through the model. Finally, it returns a WER.")
-    parser.add_argument('--inference_result_path', type=str, default='inference_result.txt',
+    parser.add_argument('--inference_result_path', type=str, default=' v',
                             help='path to save inference result')
     parser.add_argument('--mode', type=str, default='file', choices=['file', 'microphone'],
                             help='mode for input audio')
