@@ -3,38 +3,10 @@ from langchain.vectorstores import FAISS
 from glob import glob
 import os
 import json
-import torch
 from langchain.docstore.document import Document
 from models.RAG.pdf_preprocessing import LegalText
 
-def create_embedding_model():
-    """임베딩 모델 생성"""
-    # 캐시 디렉토리 설정
-    cache_dir = './weights'
-    os.makedirs(cache_dir, exist_ok=True)
-    
-    # 환경 변수 설정
-    os.environ['TRANSFORMERS_CACHE'] = cache_dir
-    os.environ['HF_HOME'] = cache_dir
-    os.environ['HF_DATASETS_CACHE'] = os.path.join(cache_dir, 'datasets')
-    os.environ['HUGGINGFACE_HUB_CACHE'] = cache_dir
-    os.environ['TORCH_HOME'] = os.path.join(cache_dir, 'torch')
-
-    # 디바이스 설정
-    if torch.backends.mps.is_available():
-        device = 'mps'
-    elif torch.cuda.is_available():
-        device = 'cuda'
-    else:
-        device = 'cpu'
-    
-    # 임베딩 모델 생성
-    return HuggingFaceEmbeddings(
-        model_name="upskyy/bge-m3-korean",
-        model_kwargs={'device': device},
-        encode_kwargs={'normalize_embeddings': True},
-        cache_folder=cache_dir
-    )
+from models.RAG.load_embedding import create_embedding_model
 
 def create_law_db(embedding_model, save_path="/workspace/LangEyE/App/data/laws"):
     """법령 DB 생성"""

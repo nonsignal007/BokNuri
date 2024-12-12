@@ -1,337 +1,253 @@
+import gradio as gr
+import speech_recognition as sr
+import scipy.io.wavfile as wavfile
+import tempfile
+import os
+import re
+from gtts import gTTS
 from pathlib import Path
-import yaml
-from typing import Dict, List, Any, Optional
-import logging
+import numpy as np
+from typing import Dict, List, Any
+from dataclasses import dataclass
+from rank_bm25 import BM25Okapi
 
-class DisabilityPromptManager:
-   def __init__(self):
-       self.base_path = '/workspace/LangEyE/App/models/RAG/prompt'
-       self.templates = {
-           'registration': f'{self.base_path}/disability_registration.yaml',
-           'parking': f'{self.base_path}/disability_parking.yaml',
-           'pension': f'{self.base_path}/disability_pension.yaml',
-           'activity': f'{self.base_path}/disability_activity.yaml',
-           'child': f'{self.base_path}/disability_child.yaml',
-           'welfare': f'{self.base_path}/disability_welfare.yaml'
-       }
-       
-       self.keywords = {
-           'registration': [
-               '등록', '신청', '장애인 등록', '장애등록', '등록절차', 
-               '장애진단', '진단서', '장애심사', '등급심사'
-           ],
-           'parking': [
-               '주차', '표지', '주차표지', '장애인주차', '편의', '편의시설',
-               '주차구역', '주차카드', '장애인전용주차'
-           ],
-           'pension': [
-               '연금', '수당', '장애연금', '장애수당', '급여', '기초연금',
-               '복지급여', '연금신청', '수당신청'
-           ],
-           'activity': [
-               '활동', '활동지원', '활동보조', '활동보조인', '활동지원사',
-               '돌봄', '요양', '활동보조서비스'
-           ],
-           'child': [
-               '아동', '장애아', '장애아동', '발달', '양육', '보육',
-               '특수교육', '장애아가족', '장애아동재활'
-           ],
-           'welfare': [
-               '복지', '복지사업', '지원사업', '바우처', '복지카드',
-               '보조기구', '보장구', '일자리', '취업'
-           ]
-       }
+@dataclass
+class SearchResult:
+    content: str
+    metadata: Dict[str, Any]
+    score: float
+    source: str
 
-   def classify_question(self, question: str) -> str:
-       scores = {category: 0 for category in self.keywords.keys()}
-       
-       for category, keywords in self.keywords.items():
-           for keyword in keywords:
-               if keyword in question:
-                   scores[category] += 1
-                   if f"장애인 {keyword}" in question or f"장애 {keyword}" in question:
-                       scores[category] += 2
-       
-       return max(scores.items(), key=lambda x: x[1])[0] if max(scores.values()) > 0 else 'welfare'
+class RetrievalQA:
+    def __init__(self, llm, embedding_model):
+        self.llm = llm
+        self.embedding_model = embedding_model
+        self.pdf_db = None
+        self.json_db = None
+        self.bm25_pdf = None
+        self.bm25_json = None
+        self.cache_dir = './weights'
+        os.makedirs(self.cache_dir, exist_ok=True)
+        
+    def initialize_db(self):
+        self.pdf_db = load_pdf_faiss_db(self.embedding_model)
+        self.json_db = load_json_faiss_db(self.embedding_model)
+        
+        pdf_docs = self._get_documents(self.pdf_db)
+        json_docs = self._get_documents(self.json_db)
+        
+        self.bm25_pdf = self._init_bm25(pdf_docs)
+        self.bm25_json = self._init_bm25(json_docs)
+        
+    def _get_documents(self, db):
+        docs = db.similarity_search("", k=1000)
+        return [doc.page_content for doc in docs]
+        
+    def _init_bm25(self, documents):
+        tokenized_docs = [doc.split() for doc in documents]
+        return BM25Okapi(tokenized_docs)
+    
+    def get_answer(self, query: str, user_info: Dict = None) -> str:
+        try:
+            search_results = self.hybrid_search(query)
+            context = self._build_context(search_results, user_info)
+            
+            prompt = f"""다음 정보를 바탕으로 질문에 답변해주세요.
+            
+            질문: {query}
+            
+            참고 정보:
+            {context}
+            
+            위 정보를 바탕으로 친절하고 상세하게 답변해주세요."""
+            
+            response = self.llm.invoke(prompt)
+            return response.strip()
+            
+        except Exception as e:
+            print(f"Error in get_answer: {str(e)}")
+            return "죄송합니다. 응답 생성 중 오류가 발생했습니다."
 
-   def get_template_path(self, question: str) -> str:
-       category = self.classify_question(question)
-       return self.templates[category]
+class ChatbotState:
+    def __init__(self):
+        self.cache_dir = './weights'
+        os.makedirs(self.cache_dir, exist_ok=True)
+        
+        os.environ['TRANSFORMERS_CACHE'] = self.cache_dir
+        os.environ['HF_HOME'] = self.cache_dir
+        os.environ['HF_DATASETS_CACHE'] = os.path.join(self.cache_dir, 'datasets')
+        os.environ['HUGGINGFACE_HUB_CACHE'] = self.cache_dir
+        os.environ['TORCH_HOME'] = os.path.join(self.cache_dir, 'torch')
+        
+        try:
+            print("모델 로딩 중...")
+            self.llm = load_model('llama', self.cache_dir)
+            
+            print("임베딩 모델 로딩 중...")
+            self.embedding_model = load_embedding('cuda')
+            
+            print("QA 시스템 초기화 중...")
+            self.qa_system = RetrievalQA(self.llm, self.embedding_model)
+            self.qa_system.initialize_db()
+            
+            self.settings = None
+            print("초기화 완료!")
+            
+        except Exception as e:
+            print(f"초기화 중 오류 발생: {str(e)}")
+            raise
 
-class LegalQASystem:
-   def __init__(
-       self,
-       custom_llm,
-       custom_embeddings,
-       custom_db,
-       template_path: str = "templates/qa_prompt.yaml"
-   ):
-       self.llm = custom_llm
-       self.embeddings = custom_embeddings
-       self.db = custom_db
-       self.default_template_path = template_path
-       self.prompt_manager = DisabilityPromptManager()
-       self.prompt_template = None
+    def update_settings(self, settings):
+        try:
+            self.settings = settings
+            return True
+        except Exception as e:
+            print(f"Settings update error: {str(e)}")
+            return False
 
-   def _load_template(self, question: str) -> dict:
-       """질문에 따라 적절한 템플릿을 동적으로 로드합니다."""
-       try:
-           template_path = self.prompt_manager.get_template_path(question)
-           logging.info(f"Selected template: {template_path}")
-           
-           with open(template_path, 'r', encoding='utf-8') as f:
-               template_data = yaml.safe_load(f)
-           return template_data
-       except FileNotFoundError:
-           with open(self.default_template_path, 'r', encoding='utf-8') as f:
-               return yaml.safe_load(f)
-       except Exception as e:
-           raise ValueError(f"템플릿 로드 중 오류 발생: {str(e)}")
+    def get_response(self, question: str) -> str:
+        try:
+            return self.qa_system.get_answer(question, self.settings)
+        except Exception as e:
+            print(f"Error generating response: {str(e)}")
+            return "죄송합니다. 응답 생성 중 오류가 발생했습니다."
 
-   def _format_prompt(self, context: str, question: str) -> str:
-       """템플릿을 사용하여 프롬프트를 포맷팅합니다."""
-       try:
-           if not self.prompt_template:
-               self.prompt_template = self._load_template(question)
-           
-           template = self.prompt_template['template']
-           return template.format(
-               context=context,
-               question=question
-           )
-       except KeyError:
-           raise KeyError("템플릿에 'template' 키가 없습니다.")
-       except Exception as e:
-           raise ValueError(f"프롬프트 포맷팅 중 오류 발생: {str(e)}")
+# ChatbotState 초기화
+print("챗봇 초기화 중...")
+chatbot_state = ChatbotState()
 
-   def _search_relevant_laws(self, question: str) -> List[Dict[str, Any]]:
-       """메타데이터와 컨텐츠를 결합한 검색을 수행합니다."""
-       try:
-           category = self.prompt_manager.classify_question(question)
-           category_filters = {
-               'registration': ["등록", "신청", "절차"],
-               'parking': ["주차", "표지", "편의시설"],
-               'pension': ["연금", "수당", "급여"],
-               'activity': ["활동", "지원", "보조"],
-               'child': ["아동", "양육", "보육"],
-               'welfare': ["복지", "지원", "서비스"]
-           }
+def check_command(text):
+    if text is None:
+        return None
+    elif "설정" in text:
+        return "settings"
+    elif "음성" in text:
+        return "voice"
+    return None
 
-           metadata_filters = {
-               "article_subject": category_filters.get(category, ["신청", "절차", "방법"])
-           }
+def process_voice(audio, current_mode):
+    if audio is None:
+        return current_mode, gr.update(), gr.update(), None
+    
+    text = speech_to_text(audio)
+    command = check_command(text)
+    
+    if command:
+        voice_visible = command == "voice"
+        settings_visible = command == "settings"
+        
+        settings_audio = None
+        if settings_visible:
+            setting_text = "안녕하세요. 복지 서비스 설정 페이지 입니다. 이름, 성별, 나이, 소득분위, 장애등급을 말씀해주세요"
+            settings_audio = text_to_speech(setting_text)
+        
+        return command, \
+               gr.update(visible=voice_visible), \
+               gr.update(visible=settings_visible), \
+               settings_audio
+    
+    return current_mode, gr.update(), gr.update(), None
 
-           # 1. 메타데이터 기반 검색
-           metadata_results = self.db.similarity_search(
-               query=question,
-               k=5,
-               filter={"article_subject": {"$in": metadata_filters["article_subject"]}}
-           )
-           
-           # 2. 일반 컨텐츠 기반 검색
-           content_results = self.db.similarity_search(
-               query=question,
-               k=5
-           )
-           
-           # 3. 결과 병합 및 정렬
-           all_results = []
-           seen_contents = set()
-           
-           # 메타데이터 결과 처리 (높은 우선순위)
-           for doc in metadata_results:
-               if doc.page_content not in seen_contents:
-                   seen_contents.add(doc.page_content)
-                   all_results.append({
-                       'content': doc.page_content,
-                       'metadata': {
-                           'law_title': doc.metadata.get('law_title', ''),
-                           'effective_date': doc.metadata.get('effective_date', ''),
-                           'paragraph_number': doc.metadata.get('paragraph_number', ''),
-                           'paragraph_subject': doc.metadata.get('paragraph_subject', ''),
-                           'article_number': doc.metadata.get('article_number', ''),
-                           'article_subject': doc.metadata.get('article_subject', ''),
-                           'search_type': 'metadata'
-                       }
-                   })
-           
-           # 컨텐츠 결과 처리
-           for doc in content_results:
-               if doc.page_content not in seen_contents:
-                   seen_contents.add(doc.page_content)
-                   all_results.append({
-                       'content': doc.page_content,
-                       'metadata': {
-                           'law_title': doc.metadata.get('law_title', ''),
-                           'effective_date': doc.metadata.get('effective_date', ''),
-                           'paragraph_number': doc.metadata.get('paragraph_number', ''),
-                           'paragraph_subject': doc.metadata.get('paragraph_subject', ''),
-                           'article_number': doc.metadata.get('article_number', ''),
-                           'article_subject': doc.metadata.get('article_subject', ''),
-                           'search_type': 'content'
-                       }
-                   })
-           
-           return all_results[:5]  # 상위 5개 결과 반환
-           
-       except Exception as e:
-           raise Exception(f"법령 검색 중 오류 발생: {str(e)}")
+def process_settings_input(audio, current_settings, current_mode):
+    if audio is None:
+        return current_settings, None, current_mode, gr.update(), gr.update()
+    
+    text = speech_to_text(audio)
+    if text is None:
+        return current_settings, None, current_mode, gr.update(), gr.update()
+    
+    if any(keyword in text for keyword in ['네', '예', '맞아', '맞습니다']):
+        start_message = "이제부터 복지 서비스를 시작하겠습니다. 궁금하신점이 무엇인가요?"
+        start_audio = text_to_speech(start_message)
+        chatbot_state.update_settings(current_settings)
+        return current_settings, start_audio, "voice", gr.update(visible=False), gr.update(visible=True)
+    
+    income, disability, age, gender, name = extract_settings(text)
+    
+    new_settings = current_settings or {}
+    if income: new_settings['income_level'] = income
+    if disability: new_settings['disability_grade'] = disability
+    if age: new_settings['age'] = age
+    if gender: new_settings['gender'] = gender
+    if name: new_settings['name'] = name
+    
+    confirmation = f"입력하신 정보를 확인해드립니다. "
+    if name: confirmation += f"{name}님, "
+    if income: confirmation += f"소득분위 {income}분위, "
+    if disability: confirmation += f"장애 {disability}등급, "
+    if age: confirmation += f"나이 {age}세, "
+    if gender: confirmation += f"{gender}이시네요. "
+    confirmation += "입력하신 정보가 맞다면 '네', 수정이 필요하시다면 '아니오'라고 말씀해 주세요."
+    
+    confirmation_audio = text_to_speech(confirmation)
+    
+    return new_settings, confirmation_audio, current_mode, gr.update(), gr.update()
 
-   def _search_similar_qa(self, question: str) -> Optional[Dict[str, Any]]:
-       """유사한 QA 쌍을 검색합니다."""
-       try:
-           similar_results = self.db.similarity_search(
-               query=question,
-               k=1
-           )
-           
-           if similar_results:
-               return {
-                   "question": similar_results[0].page_content,
-                   "answer": similar_results[0].metadata.get('answer', '')
-               }
-           return None
-       except Exception as e:
-           raise Exception(f"유사 QA 검색 중 오류 발생: {str(e)}")
+def process_voice_chat(audio, current_settings):
+    if audio is None:
+        return text_to_speech("음성 입력이 없습니다.")
+    
+    text = speech_to_text(audio)
+    if text is None:
+        return text_to_speech("죄송합니다. 음성을 인식하지 못했습니다.")
+    
+    try:
+        print(f"\n=== 새로운 질문 ===")
+        print(f"인식된 텍스트: {text}")
+        
+        response = chatbot_state.get_response(text)
+        print(f"\n생성된 응답: {response}")
+        
+        return text_to_speech(response)
+    
+    except Exception as e:
+        print(f"Error in process_voice_chat: {str(e)}")
+        return text_to_speech("죄송합니다. 응답 생성 중 오류가 발생했습니다.")
 
-   def _generate_answer(
-       self,
-       question: str,
-       law_info: List[Dict[str, Any]],
-       similar_qa: Optional[Dict[str, Any]]
-   ) -> Dict[str, Any]:
-       try:
-           context = "\n".join([
-               f"""
-               법령명: {law['metadata']['law_title']}
-               시행일자: {law['metadata']['effective_date']}
-               조항번호: {law['metadata']['article_number']}
-               조항제목: {law['metadata']['article_subject']}
-               내용: {law['content']}
-               """
-               for law in law_info
-           ])
+with gr.Blocks() as demo:
+    current_mode = gr.State("voice")
+    current_settings = gr.State(None)
+    
+    welcome_text = "안녕하세요. 서울특별시 구로구의 시각장애인들을 위한 보이스 복지 서비스입니다. 설정하신 정보에 맞게 복지 정보를 알려드릴게요. 만약 설정하신게 없으시다면 '설정'을 말씀해 주세요"
+    welcome_audio = text_to_speech(welcome_text)
+    gr.Audio(welcome_audio, autoplay=True, visible=False)
+    
+    with gr.Row():
+        gr.Markdown("# 복지 Q&A Voice Bot")
+    
+    with gr.Row():
+        main_audio_input = gr.Audio(sources=["microphone"], type="numpy")
+    
+    with gr.Row(visible=True) as voice_section:
+        with gr.Column():
+            gr.Markdown("## 복지 서비스")
+            voice_chat_input = gr.Audio(sources=["microphone"], type="numpy")
+            voice_chat_output = gr.Audio(label="AI 응답")
+    
+    with gr.Row(visible=False) as settings_section:
+        with gr.Column():
+            gr.Markdown("## 설정")
+            settings_audio_output = gr.Audio(label="설정 안내", autoplay=True)
+            settings_input = gr.Audio(sources=["microphone"], type="numpy")
+            settings_confirmation = gr.Audio(label="설정 확인", autoplay=True)
+    
+    main_audio_input.change(
+        fn=process_voice,
+        inputs=[main_audio_input, current_mode],
+        outputs=[current_mode, voice_section, settings_section, settings_audio_output]
+    )
+    
+    settings_input.change(
+        fn=process_settings_input,
+        inputs=[settings_input, current_settings, current_mode],
+        outputs=[current_settings, settings_confirmation, current_mode, settings_section, voice_section]
+    )
+    
+    voice_chat_input.change(
+        fn=process_voice_chat,
+        inputs=[voice_chat_input, current_settings],
+        outputs=voice_chat_output
+    )
 
-           initial_prompt = self._format_prompt(context, question)
-           raw_answer = self.llm.invoke(initial_prompt)
-           current_answer = raw_answer.split('[답변]')[1].strip() if '[답변]' in raw_answer else raw_answer.strip()
-
-           category = self.prompt_manager.classify_question(question)
-           if category in ['registration', 'parking', 'pension']:
-               current_answer = self._format_procedural_answer(current_answer)
-           elif category in ['activity', 'child']:
-               current_answer = self._format_service_answer(current_answer)
-           elif category == 'welfare':
-               current_answer = self._format_welfare_answer(current_answer)
-
-           return {
-               "answer": current_answer,
-               "referenced_laws": law_info,
-               "similar_qa_used": similar_qa is not None,
-               "category": category
-           }
-
-       except Exception as e:
-           raise Exception(f"답변 생성 중 오류 발생: {str(e)}")
-
-   def _format_procedural_answer(self, answer: str) -> str:
-       """절차 관련 답변 포맷팅"""
-       sections = ["신청 자격", "필요 서류", "신청 절차", "처리 기간", "문의처"]
-       formatted = []
-       current_section = None
-       
-       for line in answer.split('\n'):
-           for section in sections:
-               if section in line:
-                   current_section = section
-                   formatted.append(f"\n[{section}]")
-                   break
-           else:
-               if line.strip() and current_section:
-                   formatted.append(f"- {line.strip()}")
-       
-       return "\n".join(formatted)
-
-   def _format_service_answer(self, answer: str) -> str:
-       """서비스 관련 답변 포맷팅"""
-       sections = ["서비스 내용", "이용 방법", "지원 금액", "신청 방법", "문의처"]
-       formatted = []
-       current_section = None
-       
-       for line in answer.split('\n'):
-           for section in sections:
-               if section in line:
-                   current_section = section
-                   formatted.append(f"\n[{section}]")
-                   break
-           else:
-               if line.strip() and current_section:
-                   formatted.append(f"- {line.strip()}")
-       
-       return "\n".join(formatted)
-
-   def _format_welfare_answer(self, answer: str) -> str:
-       """복지 서비스 관련 답변 포맷팅"""
-       sections = ["지원 내용", "신청 자격", "지원 금액", "신청 방법", "문의처"]
-       formatted = []
-       current_section = None
-       
-       for line in answer.split('\n'):
-           for section in sections:
-               if section in line:
-                   current_section = section
-                   formatted.append(f"\n[{section}]")
-                   break
-           else:
-               if line.strip() and current_section:
-                   formatted.append(f"- {line.strip()}")
-       
-       return "\n".join(formatted)
-
-   def answer_question(self, question: str) -> Dict[str, Any]:
-       """질문에 대한 답변을 생성합니다."""
-       try:
-           self.prompt_template = self._load_template(question)
-           
-           relevant_laws = self._search_relevant_laws(question)
-           similar_qa = self._search_similar_qa(question)
-           response = self._generate_answer(question, relevant_laws, similar_qa)
-           
-           response['template_category'] = self.prompt_manager.classify_question(question)
-           
-           return response
-           
-       except Exception as e:
-           logging.error(f"질문 답변 중 오류 발생: {str(e)}")
-           raise Exception(f"질문 답변 중 오류 발생: {str(e)}")
-
-   def debug_qa_system(self, question: str):
-       """검색 결과를 확인합니다."""
-       print("\n=== 메타데이터 활용 검색 결과 확인 ===")
-       results = self._search_relevant_laws(question)
-       category = self.prompt_manager.classify_question(question)
-       print(f"\n선택된 카테고리: {category}")
-       
-       for i, result in enumerate(results):
-           print(f"\n[검색 결과 {i+1}]")
-           print("법령명:", result['metadata']['law_title'])
-           print("장 번호:", result['metadata']['paragraph_number'])
-           print("장 제목:", result['metadata']['paragraph_subject'])
-           print("조문번호:", result['metadata']['article_number'])
-           print("조문제목:", result['metadata']['article_subject'])
-           print("\n내용:")
-           print(result['content'])
-
-def setup_qa_system(
-   custom_llm,
-   custom_embeddings,
-   custom_db,
-   template_path: str
-) -> LegalQASystem:
-   """QA 시스템을 초기화하고 반환합니다."""
-   return LegalQASystem(
-       custom_llm=custom_llm,
-       custom_embeddings=custom_embeddings,
-       custom_db=custom_db,
-       template_path=template_path
-   )
+if __name__ == "__main__":
+    demo.launch(server_port=8501, server_name='0.0.0.0', share=True)

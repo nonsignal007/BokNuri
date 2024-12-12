@@ -1,0 +1,9 @@
+ {"role": "system", "content": "You are a helpful assistant about korean legal questions. you should choose laws and previous QnA related to the question and answer the question precisely and concisely."},
+        {
+            "role": "user",
+            "content": f"questions: {실제 사용자 질문}
+
+laws: {리트리버로 검색된 법령}
+
+qna: {리트리버로 검색된 과거 qna}"
+        }

@@ -35,7 +35,7 @@ def load_model(model_name, cache_dir):
         "text-generation",
         model=model,
         tokenizer=tokenizer,
-        max_length=2048,
+        max_length=4096,
         temperature=0.1,
         top_p=0.95,
         repetition_penalty=1.15
