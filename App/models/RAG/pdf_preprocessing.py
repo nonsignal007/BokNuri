@@ -132,3 +132,128 @@ class LegalText:
 # for filename in filenames:
 #     docs.extend(LegalText(filename).documents)
 # docs
+
+
+from langchain.document_loaders import PyPDFLoader
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import Document
+from typing import List, Dict, Union
+import re
+
+class PDFDocumentProcessor:
+    def __init__(
+        self,
+        chunk_size: int = 1000,
+        chunk_overlap: int = 200
+    ):
+        """
+        PDF 문서 처리를 위한 클래스 초기화
+        
+        Args:
+            chunk_size (int): 텍스트 분할 크기
+            chunk_overlap (int): 텍스트 분할 시 중복 크기
+        """
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        
+        self.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+            separators=["\n\n", "\n", " ", ""]
+        )
+    
+    def _extract_section_content(self, text: str, section: str) -> str:
+        """
+        텍스트에서 특정 섹션의 내용을 추출
+        
+        Args:
+            text (str): 전체 텍스트
+            section (str): 추출할 섹션 이름 (대상, 내용, 방법, 문의)
+            
+        Returns:
+            str: 추출된 섹션 내용
+        """
+        pattern = f"{section}\\s*(.*?)(?=대상|내용|방법|문의|$)"
+        match = re.search(pattern, text, re.DOTALL)
+        return match.group(1).strip() if match else ""
+    
+    def _process_page(self, page) -> Document:
+        """
+        PDF 페이지를 처리하여 Document 객체 생성
+        
+        Args:
+            page: PDF 페이지 객체
+            
+        Returns:
+            Document: 처리된 문서 객체
+        """
+        text = page.page_content
+        
+        # 섹션별 내용 추출
+        sections = {
+            "target": self._extract_section_content(text, "대상"),
+            "content": self._extract_section_content(text, "내용"),
+            "method": self._extract_section_content(text, "방법"),
+            "contact": self._extract_section_content(text, "문의")
+        }
+        
+        # 메타데이터 생성
+        metadata = {
+            "page": page.metadata["page"],
+            **{f"section_{k}": v for k, v in sections.items()},
+            **{f"has_{k}": bool(v) for k, v in sections.items()}
+        }
+        
+        return Document(page_content=text, metadata=metadata)
+    
+    def process_pdf(self, pdf_path: str, split: bool = True) -> Union[List[Document], List[List[Document]]]:
+        """
+        PDF 파일을 처리하여 Document 리스트 반환
+        
+        Args:
+            pdf_path (str): PDF 파일 경로
+            split (bool): 청크 분할 여부
+            
+        Returns:
+            Union[List[Document], List[List[Document]]]: 
+            - split=True인 경우: 분할된 Document 리스트의 리스트 (페이지별로 그룹화)
+            - split=False인 경우: Document 리스트 (페이지당 하나의 Document)
+        """
+        # PDF 로드
+        loader = PyPDFLoader(pdf_path)
+        pages = loader.load_and_split()
+        
+        # 각 페이지 처리
+        documents = [self._process_page(page) for page in pages]
+        
+        if not split:
+            return documents
+        
+        # 페이지별로 문서 분할
+        split_documents = []
+        for doc in documents:
+            splits = self.text_splitter.split_documents([doc])
+            split_documents.append(splits)
+        
+        return split_documents
+
+# # 사용 예시
+# if __name__ == "__main__":
+#     # 프로세서 인스턴스 생성
+#     processor = PDFDocumentProcessor(
+#         chunk_size=1000,
+#         chunk_overlap=200
+#     )
+    
+#     # 전체 문서 처리 (분할 없음)
+#     full_documents = processor.process_pdf("your_pdf_path.pdf", split=False)
+    
+#     # 청크로 분할된 문서 처리
+#     split_documents = processor.process_pdf("your_pdf_path.pdf", split=True)
+    
+#     # 처리된 문서 확인 예시
+#     for doc in full_documents:
+#         print(f"Page: {doc.metadata['page']}")
+#         print(f"Has target section: {doc.metadata['has_target']}")
+#         print(f"Target content: {doc.metadata['section_target']}")
+#         print("-" * 50)
