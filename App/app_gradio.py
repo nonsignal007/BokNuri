@@ -11,8 +11,12 @@ import numpy as np
 from models.RAG.Langchain import load_rag_model  # Langchain.py에서 모델 가져오기
 
 ## STT
-from App.models.STT.Korean-Streaming-ASR.src.utils.transcriber import DenoiseTranscriber
-from App.models.STT.Korean-Streaming-ASR.src.utils.argparse_config import setup_arg_parser
+from models.STT.KoreanStreamingASR.src.utils.transcriber import DenoiseTranscriber
+from models.STT.KoreanStreamingASR.src.utils.argparse_config import setup_arg_parser
+
+from load_embedding import load_embedding
+from set_db import create_chroma_db
+from load_llm import load_model
 
 
 ########## STT , TTS ###############
@@ -196,35 +200,68 @@ def format_user_info(settings):
 
 class ChatbotState:
     def __init__(self):
-        """챗봇 상태 초기화"""
-        self.create_chain = load_rag_model()
-        self.chain = None
-        self.settings = None
-        self.initialize_chain()
-    
-    def initialize_chain(self):
-        """기본 체인 초기화"""
+        """챗봇 상태 및 LegalQASystem 초기화"""
+        # 캐시 디렉토리 설정
+        self.cache_dir = './weights'
+        os.makedirs(self.cache_dir, exist_ok=True)
+        
+        # 환경 변수 설정
+        os.environ['TRANSFORMERS_CACHE'] = self.cache_dir
+        os.environ['HF_HOME'] = self.cache_dir
+        os.environ['HF_DATASETS_CACHE'] = os.path.join(self.cache_dir, 'datasets')
+        os.environ['HUGGINGFACE_HUB_CACHE'] = self.cache_dir
+        os.environ['TORCH_HOME'] = os.path.join(self.cache_dir, 'torch')
+        
         try:
-            default_info = "설정되지 않은 사용자"
-            self.chain = self.create_chain(default_info)
+            # 모델 및 임베딩 초기화
+            print("모델 로딩 중...")
+            self.llm = load_model('llama', self.cache_dir)
+            
+            print("임베딩 모델 로딩 중...")
+            self.embedding_model = load_embedding('cuda')
+            
+            print("Vector DB 초기화 중...")
+            self.db = create_chroma_db(self.embedding_model)
+            
+            # QA 시스템 초기화
+            print("QA 시스템 초기화 중...")
+            self.template_path = Path("prompt/qna.yaml")
+            self.qa_system = LegalQASystem(
+                custom_llm=self.llm,
+                custom_embeddings=self.embedding_model,
+                custom_db=self.db,
+                template_path=self.template_path
+            )
+            
+            self.settings = None
+            print("초기화 완료!")
+            
         except Exception as e:
-            print(f"Chain initialization error: {str(e)}")
-            self.chain = None
-
+            print(f"초기화 중 오류 발생: {str(e)}")
+            raise
+    
     def update_settings(self, settings):
-        """사용자 설정 업데이트 및 체인 재생성"""
+        """사용자 설정 업데이트"""
         try:
             self.settings = settings
-            user_info = format_user_info(settings)
-            self.chain = self.create_chain(user_info)
             return True
         except Exception as e:
             print(f"Settings update error: {str(e)}")
             return False
 
+    def get_response(self, question: str) -> str:
+        """질문에 대한 답변 생성"""
+        try:
+            response = self.qa_system.answer_question(question)
+            return response['answer']
+        except Exception as e:
+            print(f"Error generating response: {str(e)}")
+            return "죄송합니다. 응답 생성 중 오류가 발생했습니다."
+
 # 전역 챗봇 상태 객체 생성
+print("챗봇 초기화 중...")
 chatbot_state = ChatbotState()
-    
+
 def process_voice_chat(audio, current_settings):
     """음성 채팅 처리"""
     if audio is None:
@@ -236,15 +273,12 @@ def process_voice_chat(audio, current_settings):
         return text_to_speech("죄송합니다. 음성을 인식하지 못했습니다.")
     
     try:
-        # 설정이 변경되었다면 체인 업데이트
+        # 설정이 변경되었다면 상태 업데이트
         if current_settings != chatbot_state.settings:
             chatbot_state.update_settings(current_settings)
         
-        # RAG 체인으로 응답 생성
-        if chatbot_state.chain is None:
-            response = "죄송합니다. 시스템에 문제가 있습니다. 잠시 후 다시 시도해주세요."
-        else:
-            response = chatbot_state.chain.invoke(text)
+        # QA 시스템으로 응답 생성
+        response = chatbot_state.get_response(text)
         
         # 응답을 음성으로 변환
         return text_to_speech(response)
