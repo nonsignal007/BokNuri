@@ -126,6 +126,7 @@ class DenoiseTranscriber:
                 assert audio_path is not None
                 transcription = self.transcribe_single_file(audio_path, callback=callback)
                 return transcription
+            
         elif self.mode == 'microphone':
             self.microphone.start_stream(self.transcribe_microphone_data)
             self.microphone.run()

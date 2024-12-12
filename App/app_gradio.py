@@ -9,13 +9,22 @@ from gtts import gTTS
 import numpy as np
 
 from models.RAG.Langchain import load_rag_model  # Langchain.py에서 모델 가져오기
-from models.STT.Korean-Streaming-ASR import 
+
+## STT
+from App.models.STT.Korean-Streaming-ASR.src.utils.transcriber import DenoiseTranscriber
+from App.models.STT.Korean-Streaming-ASR.src.utils.argparse_config import setup_arg_parser
+
 
 ########## STT , TTS ###############
 def speech_to_text(audio):
     """음성을 텍스트로 변환"""
     if audio is None:
         return None
+    
+    parser = setup_arg_parser()
+    args = parser.parse_args()
+
+    transcriber = DenoiseTranscriber(args)
     
     sample_rate, data = audio
     recognizer = sr.Recognizer()
@@ -27,7 +36,7 @@ def speech_to_text(audio):
             audio_data = recognizer.record(source)
             
         try:
-            text = recognizer.recognize_google(audio_data, language='ko-KR')
+            text = transcriber.transcribe(audio_data)
             return text
         except Exception as e:
             return None
