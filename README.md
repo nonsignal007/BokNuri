@@ -29,7 +29,7 @@ sh lang-env.sh
     - src > weights 폴더에 weights 들 저장
 
 ```bash
-python app_gradio.py
+python app_gradio_retrieval.py
 ```
 
 을 통해 gradio 실행
