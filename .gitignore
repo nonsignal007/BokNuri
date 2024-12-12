@@ -168,3 +168,4 @@ weights/
 checkpoint/
 
 .gradio
+chroma_db
