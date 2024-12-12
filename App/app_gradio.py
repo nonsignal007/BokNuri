@@ -13,11 +13,11 @@ import numpy as np
 from models.STT.KoreanStreamingASR.src.utils.transcriber import DenoiseTranscriber
 from models.STT.KoreanStreamingASR.src.utils.argparse_config import setup_arg_parser
 
-from App.models.RAG.load_embedding import load_embedding
+from models.RAG.load_embedding import load_embedding
 from models.RAG.set_faiss_db import load_faiss_db
 from models.RAG.load_llm import load_model
 
-from App.models.RAG.Langchain import LegalQASystem
+from models.RAG.Langchain import LegalQASystem
 
 
 

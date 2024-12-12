@@ -7,5 +7,6 @@ pip install cython
 pip install -r stt-requirements.txt
 pip install -r tts-requirements.txt
 pip install -r requirements.txt
+pip install 'transformers<4.27.0'
 
 python -m unidic download
