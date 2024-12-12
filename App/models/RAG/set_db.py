@@ -1,6 +1,6 @@
 import torch
-from load_embedding import load_embedding
-from pdf_preprocessing import LegalText
+from models.RAG.load_embedding import load_embedding
+from models.RAG.pdf_preprocessing import LegalText
 from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from glob import glob
