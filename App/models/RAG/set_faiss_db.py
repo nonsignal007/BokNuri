@@ -51,8 +51,8 @@ def create_cached_embeddings(base_embeddings):
     fs = LocalFileStore(cache_dir)
     
     cached_embeddings = CacheBackedEmbeddings.from_bytes_store(
-        underlying_embeddings=base_embeddings,
-        document_store=fs,
+        base_embeddings,
+        fs,  # document_store를 bytes_store로 변경
         namespace="bge-m3-korean"
     )
     
@@ -100,8 +100,10 @@ def load_faiss_db(base_embedding_model):
     # 저장된 FAISS DB 로드
     db = FAISS.load_local(
         folder_path=DB_PATH,
-        embeddings=cached_embeddings
+        embeddings=cached_embeddings,
+        allow_dangerous_deserialization=True  # 이 파라미터 추가
     )
+
     
     print(f"Successfully loaded existing FAISS DB")
     return db

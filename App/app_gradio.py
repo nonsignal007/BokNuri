@@ -267,7 +267,6 @@ class ChatbotState:
             return False
 
     def get_response(self, question: str) -> str:
-        """질문에 대한 답변 생성"""
         try:
             # 사용자 설정 정보를 문자열로 변환
             user_info = format_user_info(self.settings)
@@ -275,17 +274,14 @@ class ChatbotState:
             # 카테고리 분류 및 답변 생성
             response = self.qa_system.answer_question(question)
             
-            # 답변 포맷팅
-            formatted_answer = f"[분류된 카테고리: {response.get('template_category', '일반')}]\n\n"
-            formatted_answer += response['answer']
-            
-            # 참조된 법령 정보 추가
+            # 답변만 반환 (카테고리와 참조 법령 정보는 디버깅용으로 로그에만 출력)
+            print(f"카테고리: {response.get('template_category', '일반')}")
             if 'referenced_laws' in response and response['referenced_laws']:
-                formatted_answer += "\n\n[참조 법령]"
-                for law in response['referenced_laws'][:2]:  # 상위 2개만 표시
-                    formatted_answer += f"\n- {law['metadata']['law_title']} {law['metadata']['article_number']}"
-                    
-            return formatted_answer
+                print("참조 법령:")
+                for law in response['referenced_laws'][:2]:
+                    print(f"- {law['metadata']['law_title']} {law['metadata']['article_number']}")
+            
+            return response['answer']
             
         except Exception as e:
             print(f"Error generating response: {str(e)}")
@@ -385,4 +381,4 @@ with gr.Blocks() as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch(server_port=8501, server_name='0.0.0.0')
+    demo.launch(server_port=8501, server_name='0.0.0.0', share=True)

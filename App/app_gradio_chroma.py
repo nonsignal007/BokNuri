@@ -13,8 +13,8 @@ import numpy as np
 from models.STT.KoreanStreamingASR.src.utils.transcriber import DenoiseTranscriber
 from models.STT.KoreanStreamingASR.src.utils.argparse_config import setup_arg_parser
 
-from App.models.RAG.load_embedding import load_embedding
-from App.models.RAG.시행착오.set_chroma_db import create_chroma_db
+from models.RAG.load_embedding import load_embedding
+from models.RAG.시행착오.set_chroma_db import create_chroma_db
 from models.RAG.load_llm import load_model
 
 from models.RAG.Langchain import LegalQASystem
