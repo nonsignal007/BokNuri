@@ -13,11 +13,11 @@ import numpy as np
 from models.STT.KoreanStreamingASR.src.utils.transcriber import DenoiseTranscriber
 from models.STT.KoreanStreamingASR.src.utils.argparse_config import setup_arg_parser
 
-from models.RAG.load_embedding import load_embedding
-from models.RAG.set_db import create_chroma_db
+from App.models.RAG.load_embedding import load_embedding
+from models.RAG.set_faiss_db import load_faiss_db
 from models.RAG.load_llm import load_model
 
-from models.RAG.Langchain import LegalQASystem
+from App.models.RAG.Langchain import LegalQASystem
 
 
 
@@ -237,8 +237,8 @@ class ChatbotState:
             print("임베딩 모델 로딩 중...")
             self.embedding_model = load_embedding('cuda')
             
-            print("Vector DB 초기화 중...")
-            self.db = create_chroma_db(self.embedding_model)
+            print("FAISS Vector DB 초기화 중...")
+            self.db = load_faiss_db(self.embedding_model)  # 기존 DB 로드 또는 새로 생성
             
             # QA 시스템 초기화
             print("QA 시스템 초기화 중...")
@@ -247,7 +247,7 @@ class ChatbotState:
                 custom_llm=self.llm,
                 custom_embeddings=self.embedding_model,
                 custom_db=self.db,
-                template_path=self.template_path
+                template_path=str(self.template_path)
             )
             
             self.settings = None
@@ -269,8 +269,24 @@ class ChatbotState:
     def get_response(self, question: str) -> str:
         """질문에 대한 답변 생성"""
         try:
+            # 사용자 설정 정보를 문자열로 변환
+            user_info = format_user_info(self.settings)
+            
+            # 카테고리 분류 및 답변 생성
             response = self.qa_system.answer_question(question)
-            return response['answer']
+            
+            # 답변 포맷팅
+            formatted_answer = f"[분류된 카테고리: {response.get('template_category', '일반')}]\n\n"
+            formatted_answer += response['answer']
+            
+            # 참조된 법령 정보 추가
+            if 'referenced_laws' in response and response['referenced_laws']:
+                formatted_answer += "\n\n[참조 법령]"
+                for law in response['referenced_laws'][:2]:  # 상위 2개만 표시
+                    formatted_answer += f"\n- {law['metadata']['law_title']} {law['metadata']['article_number']}"
+                    
+            return formatted_answer
+            
         except Exception as e:
             print(f"Error generating response: {str(e)}")
             return "죄송합니다. 응답 생성 중 오류가 발생했습니다."
@@ -290,12 +306,16 @@ def process_voice_chat(audio, current_settings):
         return text_to_speech("죄송합니다. 음성을 인식하지 못했습니다.")
     
     try:
+        print(f"인식된 텍스트: {text}")  # 디버깅용
+        
         # 설정이 변경되었다면 상태 업데이트
         if current_settings != chatbot_state.settings:
             chatbot_state.update_settings(current_settings)
+            print(f"사용자 설정 업데이트: {format_user_info(current_settings)}")  # 디버깅용
         
         # QA 시스템으로 응답 생성
         response = chatbot_state.get_response(text)
+        print(f"생성된 응답: {response}")  # 디버깅용
         
         # 응답을 음성으로 변환
         return text_to_speech(response)
